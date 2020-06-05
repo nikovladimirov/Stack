@@ -1,8 +1,8 @@
-﻿using System;
+﻿using DefaultNamespace;
 using DefaultNamespace.Enums;
 using UnityEngine;
 
-namespace DefaultNamespace.Behaviours
+namespace Behaviours
 {
     public class MenuUIBehaviour : MonoBehaviour
     {
