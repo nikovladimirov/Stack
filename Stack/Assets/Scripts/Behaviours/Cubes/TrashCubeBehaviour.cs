@@ -1,27 +1,16 @@
-﻿using System;
-using DefaultNamespace;
-using DefaultNamespace.Enums;
-using UnityEngine;
-using Random = UnityEngine.Random;
+﻿using UnityEngine;
 
 namespace Behaviours
 {
-    public class TrashCubeBehaviour : MonoBehaviour
+    public class TrashCubeBehaviour : BaseCubeBehaviour
     {
-        private MeshRenderer _meshRenderer;
-        private Renderer _renderer;
         private float _initY;
+        private Renderer _renderer;
 
-        private void Awake()
+        protected override void AwakeImpl()
         {
-            _meshRenderer = GetComponent<MeshRenderer>();
+            base.AwakeImpl();
             _renderer = GetComponent<Renderer>();
-        }
-
-        public Color Color
-        {
-            get { return _meshRenderer.material.color; }
-            set { _meshRenderer.material.color = value; }
         }
 
         private void Update()

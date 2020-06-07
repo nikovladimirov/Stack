@@ -16,13 +16,18 @@ namespace DefaultNamespace
         private const double Tolerance = 0.001;
 
         private GameLogic _gameLogic;
-        private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
+        private CubeBehaviour _firstCube;
         private CubeBehaviour _lastCube;
-        private int _score = -1;
-        private int _topScore = -1;
+        private int _score;
+        private int _topScore;
+        
         private Vector3 _defaultCameraPosition;
         private float _defaultFieldOfView;
-        private bool _moveCameraEndOfGame = false;
+        private bool _moveCameraEndOfGame;
+        
+        private Color _nextColor;
+        private int _changeColorPartIndex;
+        
 
         private List<Color> _colors = new List<Color>
         {
@@ -30,11 +35,9 @@ namespace DefaultNamespace
             new Color(0.5f, 0, 0.5f)
         };
 
-        private Color _nextColor;
-        private int _changeColorPartIndex;
-        private CubeBehaviour _firstCube;
 
         public const float DefaultCubeSpeed = 4.5f;
+        
         public float CubeSpeed { get; set; } = DefaultCubeSpeed;
 
         public delegate void GameStateChangedArgs(GameState state);
@@ -111,7 +114,6 @@ namespace DefaultNamespace
             switch (newState)
             {
                 case GameState.Playing:
-                    _cubes.Clear();
                     if (_parentCubes != null)
                         Destroy(_parentCubes);
 
@@ -174,7 +176,6 @@ namespace DefaultNamespace
             if (hanler == null)
                 return;
 
-            Debug.Log($"GameScore: {_score}");
             hanler(_score);
         }
 
@@ -184,14 +185,13 @@ namespace DefaultNamespace
             if (hanler == null)
                 return;
 
-            Debug.Log($"GameTopScore: {_topScore}");
             hanler(_topScore);
         }
 
         public void SpawnFirstCube()
         {
             var cube = SpawnCube();
-            cube.Init(null);
+            cube.Init(null, GenerateColor());
             _lastCube = cube;
             _firstCube = cube;
         }
@@ -208,12 +208,8 @@ namespace DefaultNamespace
         private CubeBehaviour SpawnCube()
         {
             var go = Instantiate(_cubePrefab);
-            go.transform.SetParent(_parentCubes.transform);
-            var cube = go.GetComponent<CubeBehaviour>();
-
-            cube.Color = GenerateColor();
-
-            return cube;
+            go.transform.SetParent(_parentCubes.transform);;
+            return go.GetComponent<CubeBehaviour>();
         }
 
 
@@ -237,22 +233,15 @@ namespace DefaultNamespace
 
         public void SpawnNextCube()
         {
-            if (_lastCube.transform.position.y < _lastCube.MinY)
-            {
-                SetGameState(GameState.Death);
-                return;
-            }
-
             _score++;
+            OnGameScoreChanged();
+            
+            _camTarget = _lastCube.transform.position + _groundCamOffset;
+            
             CheckNextLevel();
 
-            _camTarget = _lastCube.transform.position + _groundCamOffset;
-
-            OnGameScoreChanged();
-
             var cube = SpawnCube();
-            cube.Init(_lastCube);
-            _cubes.Add(cube);
+            cube.Init(_lastCube, GenerateColor());
 
             _lastCube = cube;
         }
@@ -295,7 +284,6 @@ namespace DefaultNamespace
                     if (Input.GetMouseButtonDown(0))
                     {
                         _lastCube.Drop();
-
                         return;
                     }
 
@@ -318,6 +306,8 @@ namespace DefaultNamespace
                             Camera.main.transform.position =
                                 Vector3.Lerp(Camera.main.transform.position, new Vector3(p.x, p.y + 5, p.z),
                                     Time.deltaTime * 1f);
+
+                            _lastCube = null;
                         }
                         return;
                     }

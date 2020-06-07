@@ -6,31 +6,18 @@ using Random = UnityEngine.Random;
 
 namespace Behaviours
 {
-    public class CubeBehaviour : MonoBehaviour
+    public class CubeBehaviour : BaseCubeBehaviour
     {
+        private const int StartPosition = 5;
+        
         private bool _isDropped;
-        private bool _isCutted;
-        private bool _directionPlus = true;
-        private MeshRenderer _meshRenderer;
+        private bool _isStatic;
+        private bool _directionPlus;
+        private float _minY;
         private Direction _direction;
+        
+        private MeshRenderer _meshRenderer;
         private CubeBehaviour _prevCube;
-        private Renderer _renderer;
-
-        private const int _startPosition = 5;
-
-        public float MinY { get; private set; }
-
-        private void Awake()
-        {
-            _meshRenderer = GetComponent<MeshRenderer>();
-            _renderer = GetComponent<Renderer>();
-        }
-
-        public Color Color
-        {
-            get { return _meshRenderer.material.color; }
-            set { _meshRenderer.material.color = value; }
-        }
 
         public CubeBehaviour WithScore
         {
@@ -44,12 +31,11 @@ namespace Behaviours
             }
         }
 
-        public bool IsVisible => _renderer.isVisible;
-
         public void Drop()
         {
             if (_isDropped)
                 return;
+            
             _isDropped = true;
 
             var rigidBody = GetComponent<Rigidbody>();
@@ -59,24 +45,18 @@ namespace Behaviours
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (!_isDropped || _isCutted)
+            if (!_isDropped || _isStatic)
                 return;
 
-            _isCutted = true;
-            
+            _isStatic = true;
+
             var t = transform;
             var otherT = collision.transform;
-            if (otherT != _prevCube.transform)
-            {
-                GameManager.Instance.SetGameState(GameState.Death);
-                return;
-            }
-            
+
             var rigidBody = GetComponent<Rigidbody>();
             rigidBody.useGravity = false;
             rigidBody.isKinematic = true;
 
-            
             Vector3 newPosition, newSize, trashPosition, trashSize;
             if (_direction == Direction.X)
             {
@@ -104,17 +84,20 @@ namespace Behaviours
             }
 
             GameManager.Instance.SpawnTrash(trashPosition, trashSize, Color);
-
+            
             transform.position = newPosition;
             transform.localScale = newSize;
+            Handheld.Vibrate();
             GameManager.Instance.SpawnNextCube();
+            _isStatic = true;
         }
 
-        public void Init(CubeBehaviour prevCube)
+        public void Init(CubeBehaviour prevCube, Color color)
         {
+            Color = color;
             if (prevCube == null)
             {
-                _isCutted = true;
+                _isStatic = true;
                 _isDropped = true;
                 return;
             }
@@ -141,22 +124,24 @@ namespace Behaviours
             }
 
             transform.localScale = prevCubeTransform.localScale;
-            MinY = transform.position.y - transform.localScale.y / 2;
+            _minY = transform.position.y - transform.localScale.y / 2;
         }
 
         private float GetInitValue()
         {
-            return Random.Range(0, 2) == 1 ? _startPosition : -_startPosition;
+            return Random.Range(0, 2) == 1 ? StartPosition : -StartPosition;
         }
 
 
-        private void FixedUpdate()
+        private void Update()
         {
-            if (_isDropped)
-            {
-                if (!_isCutted && transform.position.y < MinY)
-                    GameManager.Instance.SetGameState(GameState.Death);
+            if (!_isDropped || _isStatic)
                 return;
+
+            if (transform.position.y < _minY)
+            {
+                _isStatic = true;
+                GameManager.Instance.SetGameState(GameState.Death);
             }
         }
 
@@ -164,9 +149,9 @@ namespace Behaviours
         {
             var newValue = Mathf.Clamp(_directionPlus
                 ? position + Time.deltaTime * GameManager.Instance.CubeSpeed
-                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -_startPosition, _startPosition);
+                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -StartPosition, StartPosition);
 
-            if (newValue == _startPosition || newValue == -_startPosition)
+            if (newValue == StartPosition || newValue == -StartPosition)
                 _directionPlus = !_directionPlus;
 
             return newValue;
