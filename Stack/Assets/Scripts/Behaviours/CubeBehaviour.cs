@@ -6,19 +6,17 @@ using Random = UnityEngine.Random;
 
 namespace Behaviours
 {
-    //TODO: удалить обломки за камерой
     public class CubeBehaviour : MonoBehaviour
     {
         private bool _isDropped;
         private bool _isCutted;
-        private bool _osX;
         private bool _directionPlus = true;
         private MeshRenderer _meshRenderer;
         private Direction _direction;
         private CubeBehaviour _prevCube;
         private Renderer _renderer;
 
-        private const int _value = 5;
+        private const int _startPosition = 5;
 
         public float MinY { get; private set; }
 
@@ -127,7 +125,6 @@ namespace Behaviours
             _direction = Random.Range(0, 2) == 0 ? Direction.X : Direction.Z;
             if (_direction == Direction.X)
             {
-                _osX = true;
                 transform.position = new Vector3(
                     GetInitValue(),
                     prevCubeTransform.position.y + prevCubeTransform.localScale.y,
@@ -136,7 +133,6 @@ namespace Behaviours
             }
             else
             {
-                _osX = false;
                 transform.position = new Vector3(
                     prevCubeTransform.position.x,
                     prevCubeTransform.position.y + prevCubeTransform.localScale.y,
@@ -150,7 +146,7 @@ namespace Behaviours
 
         private float GetInitValue()
         {
-            return Random.Range(0, 2) == 1 ? _value : -_value;
+            return Random.Range(0, 2) == 1 ? _startPosition : -_startPosition;
         }
 
 
@@ -168,9 +164,9 @@ namespace Behaviours
         {
             var newValue = Mathf.Clamp(_directionPlus
                 ? position + Time.deltaTime * GameManager.Instance.CubeSpeed
-                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -_value, _value);
+                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -_startPosition, _startPosition);
 
-            if (newValue == _value || newValue == -_value)
+            if (newValue == _startPosition || newValue == -_startPosition)
                 _directionPlus = !_directionPlus;
 
             return newValue;
