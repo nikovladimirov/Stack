@@ -14,7 +14,7 @@ namespace DefaultNamespace
         private GameState _gameState;
 
         private const double Tolerance = 0.001;
-        
+
         private GameLogic _gameLogic;
         private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
         private CubeBehaviour _lastCube;
@@ -31,6 +31,7 @@ namespace DefaultNamespace
         };
 
         private Color _nextColor;
+        private int _changeColorPartIndex;
         private CubeBehaviour _firstCube;
 
         public const float DefaultCubeSpeed = 4.5f;
@@ -63,7 +64,7 @@ namespace DefaultNamespace
         private void Awake()
         {
             Instance = this;
-            
+
             _gui.SetActive(true);
             _topScore = PlayerPrefs.GetInt(TopScoreConst, 0);
             OnGameTopScoreChanged();
@@ -126,7 +127,7 @@ namespace DefaultNamespace
                     _moveCameraEndOfGame = true;
                     _score = -1;
 
-                    // _nextColor = _colors[Random.Range(0, _colors.Count)];
+                    _nextColor = _colors[Random.Range(0, _colors.Count)];
                     Camera.main.fieldOfView = _defaultFieldOfView;
                     Camera.main.transform.position = _defaultCameraPosition;
 
@@ -143,7 +144,7 @@ namespace DefaultNamespace
                         _topScore = _score;
                         OnGameTopScoreChanged();
                     }
-                    
+
                     var y = (_lastCube.transform.position.y + _firstCube.transform.position.y) / 2;
                     Camera.main.transform.position = new Vector3(_defaultCameraPosition.x, _defaultCameraPosition.y + y,
                         _defaultCameraPosition.z);
@@ -204,35 +205,35 @@ namespace DefaultNamespace
             return cube;
         }
 
-        private CubeBehaviour SpawnCube(bool colored = true)
+        private CubeBehaviour SpawnCube()
         {
             var go = Instantiate(_cubePrefab);
             go.transform.SetParent(_parentCubes.transform);
             var cube = go.GetComponent<CubeBehaviour>();
 
-            if (colored)
-            {
-                var color = _lastCube?.Color ?? _colors[Random.Range(0, _colors.Count)];
-                var generateNewColor = Random.Range(0, 10) > 8;
-                if (generateNewColor)
-                {
-                    var newIndex = _colors.IndexOf(color) + 1;
-                    if (newIndex >= _colors.Count)
-                        newIndex = 0;
-                    color = _colors[newIndex];
-                }
-
-                // _nextColor
-                cube.Color = color;
-            }
+            cube.Color = GenerateColor();
 
             return cube;
         }
 
-        // private Color GenerateColor()
-        // {
-        //     return new Color();
-        // }
+
+        private Color GenerateColor()
+        {
+            switch (_changeColorPartIndex)
+            {
+                case 0:
+                    _nextColor = new Color(_nextColor.r + 0.1f, _nextColor.g, _nextColor.b, _nextColor.a);
+                    break;
+                case 1:
+                    _nextColor = new Color(_nextColor.r, _nextColor.g + 0.1f, _nextColor.b, _nextColor.a);
+                    break;
+                case 2:
+                    _nextColor = new Color(_nextColor.r, _nextColor.g, _nextColor.b + 0.1f, _nextColor.a);
+                    break;
+            }
+
+            return _nextColor;
+        }
 
         public void SpawnNextCube()
         {
@@ -243,8 +244,7 @@ namespace DefaultNamespace
             }
 
             _score++;
-            if (_score % 11 == 10)
-                CubeSpeed *= 1.05f;
+            CheckNextLevel();
 
             _camTarget = _lastCube.transform.position + _groundCamOffset;
 
@@ -255,6 +255,33 @@ namespace DefaultNamespace
             _cubes.Add(cube);
 
             _lastCube = cube;
+        }
+
+        private bool CheckNextLevel()
+        {
+            if (_score % 6 == 5)
+            {
+                CubeSpeed *= 1.03f;
+                _nextColor = _colors[Random.Range(0, _colors.Count)];
+                _changeColorPartIndex = Random.Range(0, 3);
+                switch (_changeColorPartIndex)
+                {
+                    case 0:
+                        if (Math.Abs(_nextColor.r) > Tolerance)
+                            _changeColorPartIndex = (Math.Abs(_nextColor.g) > Tolerance) ? 2 : 1;
+                        break;
+                    case 1:
+                        if (Math.Abs(_nextColor.r) > Tolerance)
+                            _changeColorPartIndex = (Math.Abs(_nextColor.r) > Tolerance) ? 2 : 0;
+                        break;
+                    case 2:
+                        if (Math.Abs(_nextColor.r) < Tolerance)
+                            _changeColorPartIndex = (Math.Abs(_nextColor.r) > Tolerance) ? 1 : 0;
+                        break;
+                }
+            }
+
+            return false;
         }
 
         private void Update()
@@ -299,7 +326,7 @@ namespace DefaultNamespace
                     break;
             }
         }
-        
+
         private bool IsTargetVisible(GameObject go)
         {
             if (go == null)
