@@ -13,6 +13,8 @@ namespace DefaultNamespace
         public static GameManager Instance;
         private GameState _gameState;
 
+        private const double Tolerance = 0.001;
+        
         private GameLogic _gameLogic;
         private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
         private CubeBehaviour _lastCube;
@@ -20,6 +22,7 @@ namespace DefaultNamespace
         private int _topScore = -1;
         private Vector3 _defaultCameraPosition;
         private float _defaultFieldOfView;
+        private bool _moveCameraEndOfGame = false;
 
         private List<Color> _colors = new List<Color>
         {
@@ -28,7 +31,6 @@ namespace DefaultNamespace
         };
 
         private Color _nextColor;
-        private Vector3 _newCamPosition;
         private CubeBehaviour _firstCube;
 
         public const float DefaultCubeSpeed = 4.5f;
@@ -53,6 +55,7 @@ namespace DefaultNamespace
         [SerializeField] private GameObject _trashCubePrefab;
         [SerializeField] private GameObject _gui;
         private Vector3 _groundCamOffset;
+        private Vector3 _camTarget;
 
 
         public int TopScore => _topScore;
@@ -60,17 +63,20 @@ namespace DefaultNamespace
         private void Awake()
         {
             Instance = this;
+            
             _gui.SetActive(true);
             _topScore = PlayerPrefs.GetInt(TopScoreConst, 0);
             OnGameTopScoreChanged();
             _defaultCameraPosition = Camera.main.transform.position;
             _defaultFieldOfView = Camera.main.fieldOfView;
-            
+
             Vector3 groundPos = GetWorldPosAtViewportPoint(0.5f, 0.5f);
             _groundCamOffset = Camera.main.transform.position - groundPos;
-        } 
-        
-        private Vector3 GetWorldPosAtViewportPoint(float vx, float vy) {
+            _camTarget = Camera.main.transform.position;
+        }
+
+        private Vector3 GetWorldPosAtViewportPoint(float vx, float vy)
+        {
             Ray worldRay = Camera.main.ViewportPointToRay(new Vector3(vx, vy, 0));
             Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
             float distanceToGround;
@@ -117,12 +123,12 @@ namespace DefaultNamespace
                     _parentTrash = new GameObject("Trash");
                     _parentTrash.transform.SetParent(_gameObjects.transform);
 
+                    _moveCameraEndOfGame = true;
                     _score = -1;
 
                     // _nextColor = _colors[Random.Range(0, _colors.Count)];
                     Camera.main.fieldOfView = _defaultFieldOfView;
                     Camera.main.transform.position = _defaultCameraPosition;
-                    _newCamPosition = Vector3.zero;
 
                     CubeSpeed = DefaultCubeSpeed;
                     OnGameScoreChanged();
@@ -137,9 +143,9 @@ namespace DefaultNamespace
                         _topScore = _score;
                         OnGameTopScoreChanged();
                     }
-
+                    
                     var y = (_lastCube.transform.position.y + _firstCube.transform.position.y) / 2;
-                    Camera.main.transform.position = new Vector3(_defaultCameraPosition.x,  _defaultCameraPosition.y  + y,
+                    Camera.main.transform.position = new Vector3(_defaultCameraPosition.x, _defaultCameraPosition.y + y,
                         _defaultCameraPosition.z);
 
                     break;
@@ -240,12 +246,7 @@ namespace DefaultNamespace
             if (_score % 11 == 10)
                 CubeSpeed *= 1.05f;
 
-            if (_score > 4)
-            {
-                var p = Camera.main.transform.position;
-                // _newCamPosition = Camera.main.ScreenToViewportPoint() new Vector3(p.x, p.y + _lastCube.transform.localScale.y, p.z);
-                _newCamPosition = new Vector3(p.x, p.y + _lastCube.transform.localScale.y, p.z);
-            }
+            _camTarget = _lastCube.transform.position + _groundCamOffset;
 
             OnGameScoreChanged();
 
@@ -267,23 +268,34 @@ namespace DefaultNamespace
                     if (Input.GetMouseButtonDown(0))
                     {
                         _lastCube.Drop();
-                        
+
                         return;
                     }
 
                     _lastCube.NextPosition();
-                    if (Camera.main != null && Math.Abs(_newCamPosition.y) > Tolerance &&
-                        Math.Abs(Camera.main.transform.position.y - _newCamPosition.y) > Tolerance)
+                    if (Camera.main != null && Math.Abs(_camTarget.y) > Tolerance &&
+                        Math.Abs(Camera.main.transform.position.y - _camTarget.y) > Tolerance)
                         Camera.main.transform.position =
-                            Vector3.Lerp(Camera.main.transform.position, _newCamPosition, Time.deltaTime * 1f);
+                            Vector3.Lerp(Camera.main.transform.position, _camTarget, Time.deltaTime * 1f);
                     break;
 
                 case GameState.Death:
-                    // if (Camera.main == null || (_lastCube.WithScore?.IsVisible ?? true) && _firstCube.IsVisible)
-                    if (Camera.main == null || IsTargetVisible(_lastCube.WithScore.gameObject) && IsTargetVisible(_firstCube.gameObject))
+                    if (Camera.main == null || IsTargetVisible(_lastCube.WithScore?.gameObject) &&
+                        IsTargetVisible(_firstCube.gameObject))
+                    {
+                        if (_moveCameraEndOfGame)
+                        {
+                            _moveCameraEndOfGame = false;
+                            Camera.main.fieldOfView += 10;
+                            var p = Camera.main.transform.position;
+                            Camera.main.transform.position =
+                                Vector3.Lerp(Camera.main.transform.position, new Vector3(p.x, p.y + 5, p.z),
+                                    Time.deltaTime * 1f);
+                        }
                         return;
+                    }
 
-                    Camera.main.fieldOfView += 10;
+                    Camera.main.fieldOfView += 5;
                     break;
             }
         }
@@ -292,6 +304,7 @@ namespace DefaultNamespace
         {
             if (go == null)
                 return true;
+
             var c = Camera.main;
             var planes = GeometryUtility.CalculateFrustumPlanes(c);
             var point = go.transform.position;
@@ -300,9 +313,8 @@ namespace DefaultNamespace
                 if (plane.GetDistanceToPoint(point) < 0)
                     return false;
             }
+
             return true;
         }
-
-        private const double Tolerance = 0.001;
     }
 }
