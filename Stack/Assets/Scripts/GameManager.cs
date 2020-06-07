@@ -18,11 +18,22 @@ namespace DefaultNamespace
         private CubeBehaviour _lastCube;
         private int _score = -1;
         private int _topScore = -1;
-        private Vector3 _defaultCameraPosition = new Vector3(-10, 16, -10);
+        private Vector3 _defaultCameraPosition;
+        private float _defaultFieldOfView;
 
-        
-        public float CubeSpeed { get; set; } = 4.5f;
-        
+        private List<Color> _colors = new List<Color>
+        {
+            Color.red, new Color(1, 0.64f, 0), Color.yellow, Color.green, Color.cyan, Color.blue,
+            new Color(0.5f, 0, 0.5f)
+        };
+
+        private Color _nextColor;
+        private Vector3 _newCamPosition;
+        private CubeBehaviour _firstCube;
+
+        public const float DefaultCubeSpeed = 4.5f;
+        public float CubeSpeed { get; set; } = DefaultCubeSpeed;
+
         public delegate void GameStateChangedArgs(GameState state);
 
         public event GameStateChangedArgs GameStateChanged;
@@ -37,10 +48,13 @@ namespace DefaultNamespace
 
         [SerializeField] private GameObject _gameObjects;
         [SerializeField] private GameObject _parentCubes;
+        [SerializeField] private GameObject _parentTrash;
         [SerializeField] private GameObject _cubePrefab;
+        [SerializeField] private GameObject _trashCubePrefab;
         [SerializeField] private GameObject _gui;
+        private Vector3 _groundCamOffset;
 
-        
+
         public int TopScore => _topScore;
 
         private void Awake()
@@ -48,6 +62,21 @@ namespace DefaultNamespace
             Instance = this;
             _gui.SetActive(true);
             _topScore = PlayerPrefs.GetInt(TopScoreConst, 0);
+            OnGameTopScoreChanged();
+            _defaultCameraPosition = Camera.main.transform.position;
+            _defaultFieldOfView = Camera.main.fieldOfView;
+            
+            Vector3 groundPos = GetWorldPosAtViewportPoint(0.5f, 0.5f);
+            _groundCamOffset = Camera.main.transform.position - groundPos;
+        } 
+        
+        private Vector3 GetWorldPosAtViewportPoint(float vx, float vy) {
+            Ray worldRay = Camera.main.ViewportPointToRay(new Vector3(vx, vy, 0));
+            Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+            float distanceToGround;
+            groundPlane.Raycast(worldRay, out distanceToGround);
+            Debug.Log("distance to ground:" + distanceToGround);
+            return worldRay.GetPoint(distanceToGround);
         }
 
         public void SetGameState(GameState newState)
@@ -81,12 +110,21 @@ namespace DefaultNamespace
 
                     _parentCubes = new GameObject("Cubes");
                     _parentCubes.transform.SetParent(_gameObjects.transform);
+
+                    if (_parentTrash != null)
+                        Destroy(_parentTrash);
+
+                    _parentTrash = new GameObject("Trash");
+                    _parentTrash.transform.SetParent(_gameObjects.transform);
+
                     _score = -1;
-                    
+
                     // _nextColor = _colors[Random.Range(0, _colors.Count)];
+                    Camera.main.fieldOfView = _defaultFieldOfView;
                     Camera.main.transform.position = _defaultCameraPosition;
                     _newCamPosition = Vector3.zero;
-                    
+
+                    CubeSpeed = DefaultCubeSpeed;
                     OnGameScoreChanged();
                     SpawnFirstCube();
                     SpawnNextCube();
@@ -99,6 +137,10 @@ namespace DefaultNamespace
                         _topScore = _score;
                         OnGameTopScoreChanged();
                     }
+
+                    var y = (_lastCube.transform.position.y + _firstCube.transform.position.y) / 2;
+                    Camera.main.transform.position = new Vector3(_defaultCameraPosition.x,  _defaultCameraPosition.y  + y,
+                        _defaultCameraPosition.z);
 
                     break;
             }
@@ -144,22 +186,24 @@ namespace DefaultNamespace
             var cube = SpawnCube();
             cube.Init(null);
             _lastCube = cube;
+            _firstCube = cube;
         }
-        private List<Color> _colors = new List<Color> {Color.red, new Color(1, 0.64f, 0), Color.yellow, Color.green, Color.cyan, Color.blue, new Color(0.5f,0,0.5f)};
-        private Color _nextColor;
-        private Vector3 _newCamPosition;
 
-        public CubeBehaviour SpawnTrash()
+        public TrashCubeBehaviour SpawnTrash(Vector3 position, Vector3 size, Color color)
         {
-            return SpawnCube(false);
+            var go = Instantiate(_trashCubePrefab);
+            go.transform.SetParent(_parentTrash.transform);
+            var cube = go.GetComponent<TrashCubeBehaviour>();
+            cube.Init(position, size, color);
+            return cube;
         }
-        
+
         private CubeBehaviour SpawnCube(bool colored = true)
         {
             var go = Instantiate(_cubePrefab);
             go.transform.SetParent(_parentCubes.transform);
             var cube = go.GetComponent<CubeBehaviour>();
-            
+
             if (colored)
             {
                 var color = _lastCube?.Color ?? _colors[Random.Range(0, _colors.Count)];
@@ -195,13 +239,14 @@ namespace DefaultNamespace
             _score++;
             if (_score % 11 == 10)
                 CubeSpeed *= 1.05f;
-            
+
             if (_score > 4)
             {
-                var p = Camera.current.transform.position;
+                var p = Camera.main.transform.position;
+                // _newCamPosition = Camera.main.ScreenToViewportPoint() new Vector3(p.x, p.y + _lastCube.transform.localScale.y, p.z);
                 _newCamPosition = new Vector3(p.x, p.y + _lastCube.transform.localScale.y, p.z);
             }
-            
+
             OnGameScoreChanged();
 
             var cube = SpawnCube();
@@ -216,19 +261,48 @@ namespace DefaultNamespace
             if (_lastCube == null)
                 return;
 
-            if (Input.GetMouseButtonDown(0) || Input.GetKeyUp(KeyCode.Space))
+            switch (_gameState)
             {
-                _lastCube.Drop();
-                return;
-            }
+                case GameState.Playing:
+                    if (Input.GetMouseButtonDown(0))
+                    {
+                        _lastCube.Drop();
+                        
+                        return;
+                    }
 
-            _lastCube.NextPosition();
-            if (Camera.main != null && Math.Abs(_newCamPosition.y) > Tolerance &&
-                Math.Abs(Camera.main.transform.position.y - _newCamPosition.y) > Tolerance)
-                Camera.main.transform.position =
-                    Vector3.Lerp(Camera.main.transform.position, _newCamPosition, Time.deltaTime * 1f);
+                    _lastCube.NextPosition();
+                    if (Camera.main != null && Math.Abs(_newCamPosition.y) > Tolerance &&
+                        Math.Abs(Camera.main.transform.position.y - _newCamPosition.y) > Tolerance)
+                        Camera.main.transform.position =
+                            Vector3.Lerp(Camera.main.transform.position, _newCamPosition, Time.deltaTime * 1f);
+                    break;
+
+                case GameState.Death:
+                    // if (Camera.main == null || (_lastCube.WithScore?.IsVisible ?? true) && _firstCube.IsVisible)
+                    if (Camera.main == null || IsTargetVisible(_lastCube.WithScore.gameObject) && IsTargetVisible(_firstCube.gameObject))
+                        return;
+
+                    Camera.main.fieldOfView += 10;
+                    break;
+            }
         }
         
+        private bool IsTargetVisible(GameObject go)
+        {
+            if (go == null)
+                return true;
+            var c = Camera.main;
+            var planes = GeometryUtility.CalculateFrustumPlanes(c);
+            var point = go.transform.position;
+            foreach (var plane in planes)
+            {
+                if (plane.GetDistanceToPoint(point) < 0)
+                    return false;
+            }
+            return true;
+        }
+
         private const double Tolerance = 0.001;
     }
 }

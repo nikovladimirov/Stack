@@ -15,6 +15,8 @@ namespace Behaviours
         private bool _directionPlus = true;
         private MeshRenderer _meshRenderer;
         private Direction _direction;
+        private CubeBehaviour _prevCube;
+        private Renderer _renderer;
 
         private const int _value = 5;
 
@@ -23,6 +25,7 @@ namespace Behaviours
         private void Awake()
         {
             _meshRenderer = GetComponent<MeshRenderer>();
+            _renderer = GetComponent<Renderer>();
         }
 
         public Color Color
@@ -30,6 +33,20 @@ namespace Behaviours
             get { return _meshRenderer.material.color; }
             set { _meshRenderer.material.color = value; }
         }
+
+        public CubeBehaviour WithScore
+        {
+            get
+            {
+                if (_prevCube == null)
+                    return null;
+                if (_prevCube.transform.position.y < transform.position.y)
+                    return this;
+                return _prevCube.WithScore;
+            }
+        }
+
+        public bool IsVisible => _renderer.isVisible;
 
         public void Drop()
         {
@@ -48,22 +65,20 @@ namespace Behaviours
                 return;
 
             _isCutted = true;
-
+            
+            var t = transform;
+            var otherT = collision.transform;
+            if (otherT != _prevCube.transform)
+            {
+                GameManager.Instance.SetGameState(GameState.Death);
+                return;
+            }
+            
             var rigidBody = GetComponent<Rigidbody>();
             rigidBody.useGravity = false;
             rigidBody.isKinematic = true;
 
-            var t = transform;
-            var otherT = collision.transform;
-
-            var trashCube = GameManager.Instance.SpawnTrash();
-            trashCube.Init(null);
-            trashCube.Color = Color;
             
-            var trashRigidBody = trashCube.GetComponent<Rigidbody>();
-            trashRigidBody.useGravity = true;
-            trashRigidBody.isKinematic = false;
-
             Vector3 newPosition, newSize, trashPosition, trashSize;
             if (_direction == Direction.X)
             {
@@ -90,8 +105,7 @@ namespace Behaviours
                 trashPosition = new Vector3(t.position.x, t.position.y, trashPositionZ);
             }
 
-            trashCube.transform.position = trashPosition;
-            trashCube.transform.localScale = trashSize;
+            GameManager.Instance.SpawnTrash(trashPosition, trashSize, Color);
 
             transform.position = newPosition;
             transform.localScale = newSize;
@@ -106,6 +120,8 @@ namespace Behaviours
                 _isDropped = true;
                 return;
             }
+
+            _prevCube = prevCube;
 
             var prevCubeTransform = prevCube.transform;
             _direction = Random.Range(0, 2) == 0 ? Direction.X : Direction.Z;
