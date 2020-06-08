@@ -24,7 +24,6 @@ namespace Behaviours
         
         protected  virtual void AwakeImpl()
         {
-            
         }
 
         public Vector3 Position

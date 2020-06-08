@@ -8,8 +8,6 @@ namespace Behaviours
 {
     public class CubeBehaviour : BaseCubeBehaviour
     {
-        private const int StartPosition = 5;
-        
         private bool _isDropped;
         private bool _isStatic;
         private bool _directionPlus;
@@ -19,6 +17,7 @@ namespace Behaviours
         private MeshRenderer _meshRenderer;
         private CubeBehaviour _prevCube;
         private bool _withScore;
+        private float _startPosition;
 
         public CubeBehaviour WithScore
         {
@@ -41,6 +40,12 @@ namespace Behaviours
             var rigidBody = GetComponent<Rigidbody>();
             rigidBody.useGravity = true;
             rigidBody.isKinematic = false;
+        }
+
+        protected override void AwakeImpl()
+        {
+            base.AwakeImpl();
+            _startPosition = GameManager.Instance.StartPosition;
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -139,7 +144,7 @@ namespace Behaviours
 
         private float GetInitValue()
         {
-            return Random.Range(0, 2) == 1 ? StartPosition : -StartPosition;
+            return Random.Range(0, 2) == 1 ? _startPosition: -_startPosition;
         }
 
 
@@ -159,9 +164,9 @@ namespace Behaviours
         {
             var newValue = Mathf.Clamp(_directionPlus
                 ? position + Time.deltaTime * GameManager.Instance.CubeSpeed
-                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -StartPosition, StartPosition);
+                : position - Time.deltaTime * GameManager.Instance.CubeSpeed, -_startPosition, _startPosition);
 
-            if (newValue == StartPosition || newValue == -StartPosition)
+            if (newValue == _startPosition || newValue == -_startPosition)
                 _directionPlus = !_directionPlus;
 
             return newValue;

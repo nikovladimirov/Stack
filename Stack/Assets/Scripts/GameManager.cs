@@ -16,8 +16,34 @@ namespace DefaultNamespace
         public static GameManager Instance;
         private GameState _gameState;
 
+        #region Events
+
+        public event GameStateChangedArgs GameStateChanged;
+        public event GameScoreChangedArgs GameScoreChanged;
+        public event GameTopScoreChangedArgs GameTopScoreChanged;
+
+        #endregion Events
+        
         private const double Tolerance = 0.001;
 
+        [SerializeField] public float StartPosition = 5;
+        [SerializeField] public float InitialCubeSpeed;
+        
+        [SerializeField] private GameObject _gameObjects;
+        [SerializeField] private GameObject _cubePrefab;
+        [SerializeField] private GameObject _trashCubePrefab;
+        [SerializeField] private GameObject _gui;
+
+        [SerializeField] private List<Color> _colors;
+        //= new List<Color>
+        // {
+        //     Color.red, new Color(1, 0.64f, 0), Color.yellow, Color.green,
+        //     Color.cyan, Color.blue, new Color(0.5f, 0, 0.5f)
+        // };
+
+        
+        private GameObject _parentCubes;
+        private GameObject _parentTrash;
         private GameLogic _gameLogic;
         private CubeBehaviour _firstCube;
         private CubeBehaviour _lastCube;
@@ -30,41 +56,14 @@ namespace DefaultNamespace
 
         private Color _nextColor;
         private int _changeColorPartIndex;
-        private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
-
-        private List<Color> _colors = new List<Color>
-        {
-            Color.red, new Color(1, 0.64f, 0), Color.yellow, Color.green, Color.cyan, Color.blue,
-            new Color(0.5f, 0, 0.5f)
-        };
-
-
-        public const float DefaultCubeSpeed = 4.5f;
-
-        public float CubeSpeed { get; set; } = DefaultCubeSpeed;
-
-        public delegate void GameStateChangedArgs(GameState state);
-
-        public event GameStateChangedArgs GameStateChanged;
-
-        public delegate void GameScoreChangedArgs(int score);
-
-        public event GameScoreChangedArgs GameScoreChanged;
-
-        public delegate void GameTopScoreChangedArgs(int topscore);
-
-        public event GameTopScoreChangedArgs GameTopScoreChanged;
-
-        [SerializeField] private GameObject _gameObjects;
-        [SerializeField] private GameObject _parentCubes;
-        [SerializeField] private GameObject _parentTrash;
-        [SerializeField] private GameObject _cubePrefab;
-        [SerializeField] private GameObject _trashCubePrefab;
-        [SerializeField] private GameObject _gui;
+        
         private Vector3 _groundCamOffset;
         private Vector3 _camTarget;
 
+        private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
 
+        public float CubeSpeed { get; set; }
+        
         public int TopScore => _topScore;
 
         private void Awake()
@@ -83,6 +82,10 @@ namespace DefaultNamespace
             
             BuildLastTower();
         }
+        
+        public delegate void GameStateChangedArgs(GameState state);
+        public delegate void GameScoreChangedArgs(int score);
+        public delegate void GameTopScoreChangedArgs(int topscore);
 
         private void BuildLastTower()
         {
@@ -175,7 +178,7 @@ namespace DefaultNamespace
                     Camera.main.fieldOfView = _defaultFieldOfView;
                     Camera.main.transform.position = _defaultCameraPosition;
 
-                    CubeSpeed = DefaultCubeSpeed;
+                    CubeSpeed = InitialCubeSpeed;
                     OnGameScoreChanged();
                     SpawnFirstCube();
                     SpawnNextCube();
