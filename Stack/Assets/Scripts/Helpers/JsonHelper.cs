@@ -1,5 +1,5 @@
 ﻿using System;
-using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Helpers
 {
@@ -12,7 +12,7 @@ namespace Helpers
                 if (string.IsNullOrEmpty(json))
                     return default;
 
-                return JsonConvert.DeserializeObject<T>(json);
+                return JsonUtility.FromJson<T>(json);
             }
             catch (Exception ex)
             {
@@ -22,7 +22,7 @@ namespace Helpers
         
         public static string SerializeToString<T>(T data)
         {
-            return JsonConvert.SerializeObject(data);
+            return JsonUtility.ToJson(data);
         }
     }
 }
