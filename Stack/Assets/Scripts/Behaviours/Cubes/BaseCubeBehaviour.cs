@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System;
+using Helpers;
+using Newtonsoft.Json;
+using UnityEngine;
 
 namespace Behaviours
 {
@@ -12,9 +15,27 @@ namespace Behaviours
             AwakeImpl();
         }
 
+        public virtual void Init(Vector3 position, Vector3 size, Color color)
+        {
+            transform.position = position;
+            transform.localScale = size;
+            Color = color;
+        }
+        
         protected  virtual void AwakeImpl()
         {
             
+        }
+
+        public Vector3 Position
+        {
+            get { return transform.position;}
+            set { transform.position = value; }
+        }
+        public Vector3 Scale
+        {
+            get { return transform.localScale;}
+            set { transform.localScale = value; }
         }
         
         public Color Color

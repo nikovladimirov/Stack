@@ -18,16 +18,16 @@ namespace Behaviours
         
         private MeshRenderer _meshRenderer;
         private CubeBehaviour _prevCube;
+        private bool _withScore;
 
         public CubeBehaviour WithScore
         {
             get
             {
-                if (_prevCube == null)
-                    return null;
-                if (_prevCube.transform.position.y < transform.position.y)
+                if (_withScore)
                     return this;
-                return _prevCube.WithScore;
+                
+                return _prevCube?.WithScore;
             }
         }
 
@@ -49,6 +49,7 @@ namespace Behaviours
                 return;
 
             _isStatic = true;
+            _withScore = true;
 
             var t = transform;
             var otherT = collision.transform;
@@ -92,6 +93,14 @@ namespace Behaviours
             _isStatic = true;
         }
 
+        public override void Init(Vector3 position, Vector3 size, Color color)
+        {
+            base.Init(position, size, color);
+            _isDropped = true;
+            _isStatic = true;
+            _withScore = true;
+        }
+        
         public void Init(CubeBehaviour prevCube, Color color)
         {
             Color = color;

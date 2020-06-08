@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Behaviours;
+using Data;
 using DefaultNamespace.Enums;
 using DefaultNamespace.Logics;
+using Helpers;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -20,14 +23,14 @@ namespace DefaultNamespace
         private CubeBehaviour _lastCube;
         private int _score;
         private int _topScore;
-        
+
         private Vector3 _defaultCameraPosition;
         private float _defaultFieldOfView;
         private bool _moveCameraEndOfGame;
-        
+
         private Color _nextColor;
         private int _changeColorPartIndex;
-        
+        private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
 
         private List<Color> _colors = new List<Color>
         {
@@ -37,7 +40,7 @@ namespace DefaultNamespace
 
 
         public const float DefaultCubeSpeed = 4.5f;
-        
+
         public float CubeSpeed { get; set; } = DefaultCubeSpeed;
 
         public delegate void GameStateChangedArgs(GameState state);
@@ -77,6 +80,44 @@ namespace DefaultNamespace
             Vector3 groundPos = GetWorldPosAtViewportPoint(0.5f, 0.5f);
             _groundCamOffset = Camera.main.transform.position - groundPos;
             _camTarget = Camera.main.transform.position;
+            
+            BuildLastTower();
+        }
+
+        private void BuildLastTower()
+        {
+            try
+            {
+                var jsonPrevBuild = PlayerPrefs.GetString(BuildJsonConst, string.Empty);
+                var cubes = JsonHelper.DeserializeFromString<List<CubeData>>(jsonPrevBuild);
+                if(cubes == default)
+                    return;
+                
+                _cubes.Clear();
+                if (_parentCubes != null)
+                    Destroy(_parentCubes);
+                
+                _parentCubes = new GameObject("Cubes");
+                _parentCubes.transform.SetParent(_gameObjects.transform);
+
+                _moveCameraEndOfGame = true;
+                
+                var first = true;
+                foreach (var cubeData in cubes)
+                {
+                    _lastCube = SpawnCube();
+                    _lastCube.Init(cubeData.Position, cubeData.Scale, ColorConverter.HexToColor(cubeData.Color) ?? Color.white);
+                    if (first)
+                    {
+                        _firstCube = _lastCube;
+                        first = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
         }
 
         private Vector3 GetWorldPosAtViewportPoint(float vx, float vy)
@@ -128,6 +169,7 @@ namespace DefaultNamespace
 
                     _moveCameraEndOfGame = true;
                     _score = -1;
+                    _cubes.Clear();
 
                     _nextColor = _colors[Random.Range(0, _colors.Count)];
                     Camera.main.fieldOfView = _defaultFieldOfView;
@@ -147,6 +189,11 @@ namespace DefaultNamespace
                         OnGameTopScoreChanged();
                     }
 
+                    PlayerPrefs.SetString(BuildJsonConst,
+                        JsonHelper.SerializeToString(_cubes.Where(x => x.WithScore == x || x.WithScore == null)
+                            .Select(x => new CubeData(x)).ToList()));
+                    PlayerPrefs.Save();
+
                     var y = (_lastCube.transform.position.y + _firstCube.transform.position.y) / 2;
                     Camera.main.transform.position = new Vector3(_defaultCameraPosition.x, _defaultCameraPosition.y + y,
                         _defaultCameraPosition.z);
@@ -158,7 +205,7 @@ namespace DefaultNamespace
         }
 
         private const string TopScoreConst = "TopScore";
-        private const string TopBuildConst = "TopBuild";
+        private const string BuildJsonConst = "BuildJson";
 
         private void OnGameStateChanged()
         {
@@ -208,8 +255,10 @@ namespace DefaultNamespace
         private CubeBehaviour SpawnCube()
         {
             var go = Instantiate(_cubePrefab);
-            go.transform.SetParent(_parentCubes.transform);;
-            return go.GetComponent<CubeBehaviour>();
+            go.transform.SetParent(_parentCubes.transform);
+            var cube = go.GetComponent<CubeBehaviour>();
+            _cubes.Add(cube);
+            return cube;
         }
 
 
@@ -235,9 +284,9 @@ namespace DefaultNamespace
         {
             _score++;
             OnGameScoreChanged();
-            
+
             _camTarget = _lastCube.transform.position + _groundCamOffset;
-            
+
             CheckNextLevel();
 
             var cube = SpawnCube();
@@ -294,6 +343,7 @@ namespace DefaultNamespace
                             Vector3.Lerp(Camera.main.transform.position, _camTarget, Time.deltaTime * 1f);
                     break;
 
+                case GameState.Menu:
                 case GameState.Death:
                     if (Camera.main == null || IsTargetVisible(_lastCube.WithScore?.gameObject) &&
                         IsTargetVisible(_firstCube.gameObject))
@@ -309,6 +359,7 @@ namespace DefaultNamespace
 
                             _lastCube = null;
                         }
+
                         return;
                     }
 
