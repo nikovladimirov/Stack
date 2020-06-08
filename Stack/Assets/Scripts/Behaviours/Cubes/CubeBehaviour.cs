@@ -88,7 +88,7 @@ namespace Behaviours
             
             transform.position = newPosition;
             transform.localScale = newSize;
-            Handheld.Vibrate();
+            // Handheld.Vibrate();  //TODO: легкий taptic engine.
             GameManager.Instance.SpawnNextCube();
             _isStatic = true;
         }
