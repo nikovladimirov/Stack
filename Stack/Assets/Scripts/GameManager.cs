@@ -345,7 +345,7 @@ namespace DefaultNamespace
 
                 case GameState.Menu:
                 case GameState.Death:
-                    if (Camera.main == null || IsTargetVisible(_lastCube.WithScore?.gameObject) &&
+                    if (Camera.main == null || IsTargetVisible(_lastCube.WithScore.gameObject) &&
                         IsTargetVisible(_firstCube.gameObject))
                     {
                         if (_moveCameraEndOfGame)

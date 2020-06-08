@@ -108,6 +108,7 @@ namespace Behaviours
             {
                 _isStatic = true;
                 _isDropped = true;
+                _withScore = true;
                 return;
             }
 
