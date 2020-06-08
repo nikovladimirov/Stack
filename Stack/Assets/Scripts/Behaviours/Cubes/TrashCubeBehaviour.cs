@@ -16,6 +16,7 @@ namespace Behaviours
         public override void Init(Vector3 position, Vector3 size, Color color)
         {
             base.Init(position, size, color);
+            
             _initY = transform.position.y;
         }
 

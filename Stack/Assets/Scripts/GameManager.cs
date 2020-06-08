@@ -4,7 +4,6 @@ using System.Linq;
 using Behaviours;
 using Data;
 using DefaultNamespace.Enums;
-using DefaultNamespace.Logics;
 using Helpers;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -13,9 +12,8 @@ namespace DefaultNamespace
 {
     public class GameManager : MonoBehaviour
     {
-        public static GameManager Instance;
-        private GameState _gameState;
-
+        public static GameManager Instance { get; private set; }
+        
         #region Events
 
         public event GameStateChangedArgs GameStateChanged;
@@ -24,29 +22,27 @@ namespace DefaultNamespace
 
         #endregion Events
         
+        private const string TopScoreConst = "TopScore";
+        private const string BuildJsonConst = "BuildJson";
         private const double Tolerance = 0.001;
 
-        [SerializeField] public float StartPosition = 5;
-        [SerializeField] public float InitialCubeSpeed;
-        
-        [SerializeField] private GameObject _gameObjects;
         [SerializeField] private GameObject _cubePrefab;
         [SerializeField] private GameObject _trashCubePrefab;
+        [SerializeField] private GameObject _gameObjects;
         [SerializeField] private GameObject _gui;
-
+        [SerializeField] public float StartPosition;
+        [SerializeField] public float InitialCubeSpeed;
+        
         [SerializeField] private List<Color> _colors;
-        //= new List<Color>
-        // {
-        //     Color.red, new Color(1, 0.64f, 0), Color.yellow, Color.green,
-        //     Color.cyan, Color.blue, new Color(0.5f, 0, 0.5f)
-        // };
 
+        private GameState _gameState;
         
         private GameObject _parentCubes;
         private GameObject _parentTrash;
-        private GameLogic _gameLogic;
+        
         private CubeBehaviour _firstCube;
         private CubeBehaviour _lastCube;
+        
         private int _score;
         private int _topScore;
 
@@ -62,12 +58,15 @@ namespace DefaultNamespace
 
         private List<CubeBehaviour> _cubes = new List<CubeBehaviour>();
 
-        public float CubeSpeed { get; set; }
+        public float CubeSpeed { get; private set; }
         
         public int TopScore => _topScore;
 
         private void Awake()
         {
+            if (Instance != null)
+                throw  new Exception("already initialized");
+            
             Instance = this;
 
             _gui.SetActive(true);
@@ -207,9 +206,6 @@ namespace DefaultNamespace
             OnGameStateChanged();
         }
 
-        private const string TopScoreConst = "TopScore";
-        private const string BuildJsonConst = "BuildJson";
-
         private void OnGameStateChanged()
         {
             var hanler = GameStateChanged;
@@ -263,7 +259,6 @@ namespace DefaultNamespace
             _cubes.Add(cube);
             return cube;
         }
-
 
         private Color GenerateColor()
         {
