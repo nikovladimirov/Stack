@@ -722,14 +722,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a014d0633de447d7863743882f5e9d3d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _gameObjects: {fileID: 1328575135}
-  _parentCubes: {fileID: 0}
-  _parentTrash: {fileID: 0}
   _cubePrefab: {fileID: 4316125451439569970, guid: 470fc887226a40b49aaff06eb1efd39c,
     type: 3}
   _trashCubePrefab: {fileID: 4316125451439569970, guid: 60768dc457b7cdb4bbbdbba3cdb607bf,
     type: 3}
+  _gameObjects: {fileID: 1328575135}
   _gui: {fileID: 1509750065}
+  StartPosition: 5
+  InitialCubeSpeed: 4.5
+  _colors:
+  - {r: 1, g: 0, b: 0, a: 0}
+  - {r: 1, g: 0.5, b: 0, a: 0}
+  - {r: 0.9963192, g: 1, b: 0, a: 0}
+  - {r: 0.032359123, g: 0, b: 1, a: 0}
+  - {r: 0.25926602, g: 1, b: 0, a: 0}
+  - {r: 0, g: 1, b: 0.9712162, a: 0}
+  - {r: 1, g: 0, b: 1, a: 0}
 --- !u!4 &475854897
 Transform:
   m_ObjectHideFlags: 0
