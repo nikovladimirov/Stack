@@ -175,6 +175,7 @@ namespace Behaviours
 
         public void NextPosition()
         {
+            return;
             if (_isDropped)
                 return;
 
